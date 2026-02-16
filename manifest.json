@@ -1,0 +1,15 @@
+{
+  "short_name": "Pogoda",
+  "name": "Terminal Pogodowy Radzionków",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/metno/weathericons/main/weather/svg/clearsky_day.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000"
+}

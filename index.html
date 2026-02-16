@@ -4,12 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TERMINAL RADZIONKÓW</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Pogoda">
-    
     <style>
         :root { --bg: #ffffff; --box: #f4f4f4; --txt: #000; --muted: #666; }
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
@@ -18,8 +12,6 @@
             background: var(--bg); color: var(--txt); margin: 0; padding: 0;
             font-family: Arial, Helvetica, sans-serif; 
             width: 100vw; height: 100dvh; display: flex; overflow: hidden;
-            position: fixed; 
-            touch-action: none;
         }
 
         .widget { width: 100%; height: 100%; display: flex; flex-direction: column; padding: 2vmin 4vmin; }
@@ -41,8 +33,6 @@
         
         .box-temp { width: 33%; }
         .temp-row { display: flex; align-items: center; gap: 2vmin; }
-        
-        /* POPRAWKA: Dodanie letter-spacing, by liczby się nie zlewały */
         .main-temp { font-size: 14vmin; font-weight: 900; letter-spacing: -2px; line-height: 1; white-space: nowrap; }
         
         .trend-container { display: flex; flex-direction: column; align-items: center; margin-left: 3vmin; }
@@ -61,9 +51,9 @@
         
         .box-trends { width: 33%; padding: 1.5vmin; }
         .chart-title { font-size: 1.7vmin; font-weight: 900; text-transform: uppercase; margin-bottom: 1.5vmin; text-align: center; color: var(--muted); }
-        .chart-area { width: 100%; height: 60%; display: flex; align-items: flex-end; justify-content: space-around; gap: 4px; }
-        .bar { background: #000; width: 80%; min-height: 4px; border-radius: 2px 2px 0 0; }
-        .bar-label { font-size: 1.4vmin; font-weight: 900; color: var(--muted); margin-top: 5px; }
+        .chart-area { width: 100%; height: 60%; display: flex; align-items: flex-end; justify-content: space-around; gap: 2px; }
+        .bar { background: #000; width: 70%; min-height: 4px; border-radius: 1px 1px 0 0; }
+        .bar-label { font-size: 1.2vmin; font-weight: 900; color: var(--muted); margin-top: 5px; }
 
         .f-table { width: 100%; border-collapse: collapse; flex-grow: 1; table-layout: fixed; }
         .f-table th { font-size: 1.7vmin; color: var(--muted); text-transform: uppercase; padding-bottom: 1vmin; }
@@ -138,13 +128,9 @@
             'lightsnowshowers': 'Przelotny śnieg'
         };
 
-        // Funkcja do formatowania temperatury z ładnym minusem
         function formatTemp(val) {
             const rounded = Math.round(val);
-            if (rounded < 0) {
-                // Używamy profesjonalnego minusa i spacji nierozdzielnej dla odstępu
-                return `&minus;&nbsp;${Math.abs(rounded)}°`;
-            }
+            if (rounded < 0) return `&minus;&nbsp;${Math.abs(rounded)}°`;
             return `${rounded}°`;
         }
 
@@ -160,7 +146,7 @@
                 const formatTime = (isoStr) => new Date(isoStr).toLocaleTimeString('pl-PL', {hour: '2-digit', minute: '2-digit'});
                 document.getElementById('sunrise').innerText = formatTime(d.results.sunrise);
                 document.getElementById('sunset').innerText = formatTime(d.results.sunset);
-            } catch (e) { console.error("Błąd pobierania danych o słońcu"); }
+            } catch (e) { console.error("Błąd słońca"); }
         }
 
         function updateClock() {
@@ -172,44 +158,40 @@
         async function update() {
             const target = `https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${LOC.lat}&lon=${LOC.lon}`;
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(target);
-
             try {
                 const r = await fetch(proxy);
                 const d = await r.json();
                 const series = d.properties.timeseries;
                 const inst = series[0].data.instant.details;
-
-                // Temperatura Główna z poprawionym minusem
-                document.getElementById('m-temp').innerHTML = formatTemp(inst.air_temperature);
                 
+                document.getElementById('m-temp').innerHTML = formatTemp(inst.air_temperature);
                 const nextT = series[1].data.instant.details.air_temperature;
                 document.getElementById('t-trend').innerText = Math.abs(nextT - inst.air_temperature) < 0.2 ? '→' : (nextT > inst.air_temperature ? '↗' : '↘');
-
+                
                 const ws = inst.wind_speed * 3.6;
                 let fl = inst.air_temperature;
                 if(fl <= 10 && ws > 4) fl = 13.12 + 0.6215*fl - 11.37*Math.pow(ws, 0.16) + 0.3965*fl*Math.pow(ws, 0.16);
+                document.getElementById('f-temp').innerHTML = fl < 0 ? `&minus;&nbsp;${Math.abs(fl.toFixed(1))}` : fl.toFixed(1);
                 
-                // Poprawka minusa w odczuwalnej
-                const flRounded = fl.toFixed(1);
-                document.getElementById('f-temp').innerHTML = fl < 0 ? `&minus;&nbsp;${Math.abs(flRounded)}` : flRounded;
-
                 document.getElementById('press').innerText = Math.round(inst.air_pressure_at_sea_level);
                 document.getElementById('humid').innerText = Math.round(inst.relative_humidity);
                 document.getElementById('w-speed').innerText = Math.round(ws);
                 document.getElementById('w-arr').style.transform = `rotate(${inst.wind_from_direction + 180}deg)`;
+                
                 const dirs = ['N','NE','E','SE','S','SW','W','NW'];
                 document.getElementById('w-meta').innerText = Math.round(inst.wind_from_direction) + '° ' + dirs[Math.round(inst.wind_from_direction/45)%8];
-
+                
                 const symCode = series[0].data.next_1_hours.summary.symbol_code;
                 document.getElementById('m-icon').src = getIconUrl(symCode);
                 const cleanSym = symCode.split('_')[0];
                 document.getElementById('m-desc').innerText = (trans[cleanSym] || cleanSym).toUpperCase();
                 
+                // WYKRES CIŚNIENIA - Teraz co 1 godzinę (12 słupków)
                 const chart = document.getElementById('pressure-chart');
                 chart.innerHTML = '';
                 let points = [];
-                for(let i=0; i<7; i++) {
-                    const data = series[i*2];
+                for(let i=0; i<12; i++) {
+                    const data = series[i]; // i*1 zamiast i*2
                     if(data) points.push({ v: data.data.instant.details.air_pressure_at_sea_level, h: new Date(data.time).getHours() });
                 }
                 const vals = points.map(p => p.v);
@@ -220,7 +202,7 @@
                     const group = document.createElement('div');
                     group.style.cssText = "display:flex; flex-direction:column; align-items:center; flex:1; height:100%; justify-content:flex-end;";
                     const height = ((p.v - min) / (range || 1)) * 100;
-                    group.innerHTML = `<div class="bar" style="height:${Math.max(height, 5)}%"></div><div class="bar-label">${p.h}:00</div>`;
+                    group.innerHTML = `<div class="bar" style="height:${Math.max(height, 5)}%"></div><div class="bar-label">${p.h}</div>`;
                     chart.appendChild(group);
                 });
 
@@ -228,11 +210,9 @@
                 series.forEach(ts => { const date = ts.time.split('T')[0]; if(!daily[date]) daily[date] = []; daily[date].push(ts); });
                 const body = document.getElementById('f-body');
                 body.innerHTML = '';
-                const daysMap = ['NIEDZIELA','PONIEDZIAŁEK','WTOREK','ŚRODA','CZWARTEK','PIĄTEK','SOBOTA'];
-
                 Object.keys(daily).slice(1, 4).forEach(day => {
                     const dt = new Date(day);
-                    let row = `<tr><td class="f-day-box"><span class="f-day-name">${daysMap[dt.getDay()]}</span><span class="f-day-date">${dt.toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit'})}</span></td>`;
+                    let row = `<tr><td class="f-day-box"><span class="f-day-name">${['NIEDZIELA','PONIEDZIAŁEK','WTOREK','ŚRODA','CZWARTEK','PIĄTEK','SOBOTA'][dt.getDay()]}</span><span class="f-day-date">${dt.toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit'})}</span></td>`;
                     [8, 13, 20].forEach(h => {
                         const s = daily[day].reduce((a,b) => Math.abs(new Date(b.time).getHours()-h) < Math.abs(new Date(a.time).getHours()-h) ? b : a);
                         const ico = s.data.next_6_hours ? s.data.next_6_hours.summary.symbol_code : s.data.next_1_hours.summary.symbol_code;
@@ -240,7 +220,6 @@
                     });
                     body.innerHTML += row + `</tr>`;
                 });
-
                 document.getElementById('status').innerText = "OK";
             } catch(e) { document.getElementById('status').innerText = "BŁĄD"; }
         }
@@ -250,5 +229,4 @@
         updateClock(); update(); getSun();
     </script>
 </body>
-
 </html>
